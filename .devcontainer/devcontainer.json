@@ -1,0 +1,79 @@
+{
+  "name": "AliasVault",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/dotnet:2": {
+      "version": "10.0"
+    },
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "24"
+    },
+    "ghcr.io/devcontainers/features/rust:1": {
+      "version": "stable",
+      "profile": "default"
+    },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "privileged": true,
+  "remoteUser": "vscode",
+  "runArgs": [
+    // Rootless Podman: map the host user onto the container user so bind-mounted files stay writable
+    "--userns=keep-id:uid=1000,gid=1000",
+    // SELinux (Fedora host): don't relabel/deny access to the bind-mounted workspace
+    "--security-opt=label=disable",
+    // SmtpService binds ports 25/587, which a non-root user can't do by default
+    "--sysctl=net.ipv4.ip_unprivileged_port_start=0"
+  ],
+  "containerEnv": {
+    // The dotnet image/feature sets this to true, which makes SecretReader read /secrets/* instead
+    // of the JWT_KEY/ADMIN_PASSWORD_HASH/... env vars that scripts/dev.sh passes in
+    "DOTNET_RUNNING_IN_CONTAINER": "false"
+  },
+  "remoteEnv": {
+    "DOTNET_RUNNING_IN_CONTAINER": "false",
+    // Set on the host to the LAN IP so a physical Android device can reach Metro
+    "REACT_NATIVE_PACKAGER_HOSTNAME": "${localEnv:REACT_NATIVE_PACKAGER_HOSTNAME}"
+  },
+  "mounts": [
+    // Keep package caches across container rebuilds
+    "source=aliasvault-nuget,target=/home/vscode/.nuget,type=volume",
+    "source=aliasvault-gradle,target=/home/vscode/.gradle,type=volume"
+  ],
+  // Published on all host interfaces (not just localhost) so a phone on the LAN can reach the API and Metro
+  "appPort": ["5100:5100", "5104:5104"],
+  "forwardPorts": [5102, 5103, 5105, 5109, 5190, 5191],
+  "portsAttributes": {
+    "5100": { "label": "API" },
+    "5102": { "label": "Admin" },
+    "5103": { "label": "Browser extension" },
+    "5104": { "label": "Metro (mobile)" },
+    "5105": { "label": "Web" },
+    "5109": { "label": "Postgres" },
+    "5190": { "label": "Docs (dev)" },
+    "5191": { "label": "Docs (docker)" }
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csdevkit",
+        "ms-dotnettools.csharp",
+        "dbaeumer.vscode-eslint",
+        "bradlc.vscode-tailwindcss",
+        "rust-lang.rust-analyzer",
+        "vadimcn.vscode-lldb",
+        "tamasfe.even-better-toml",
+        "ms-playwright.playwright",
+        "vitest.explorer",
+        "expo.vscode-expo-tools",
+        "vscjava.vscode-java-pack",
+        "fwcd.kotlin",
+        "ms-azuretools.vscode-docker",
+        "editorconfig.editorconfig"
+      ]
+    }
+  }
+}
